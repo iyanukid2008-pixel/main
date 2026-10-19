@@ -19,41 +19,7 @@ import {
   type C2paExport,
 } from './c2pa.js'
 import { logStructured, redactSensitive } from './logging.js'
-
-// ── CLI argument parsing ──────────────────────────────────────────────────
-
-type Command = 'verify' | 'manifest' | 'hash' | 'verify-receipt' | 'c2pa' | 'help'
-
-function parseArgs(argv: string[]): {
-  command: Command
-  flags: Record<string, string>
-} {
-  if (argv.length < 1) {
-    return { command: 'help', flags: {} }
-  }
-
-  const command = argv[0] as Command
-  const flags: Record<string, string> = {}
-
-  for (let i = 1; i < argv.length; i++) {
-    const arg = argv[i]
-    if (arg.startsWith('--')) {
-      const eq = arg.indexOf('=')
-      if (eq >= 0) {
-        flags[arg.slice(2, eq)] = arg.slice(eq + 1)
-      } else {
-        const key = arg.slice(2)
-        if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
-          flags[key] = argv[++i]
-        } else {
-          flags[key] = 'true'
-        }
-      }
-    }
-  }
-
-  return { command, flags }
-}
+import { parseCliArgs, CliUsageError, type ParsedArgs } from './args.js'
 
 // ── I/O helpers ───────────────────────────────────────────────────────────
 
@@ -103,7 +69,14 @@ function exit(code: number, message?: string): never {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
-  const { command, flags } = parseArgs(args)
+  let parsed: ParsedArgs
+  try {
+    parsed = parseCliArgs(args)
+  } catch (err) {
+    if (err instanceof CliUsageError) exit(2, err.message)
+    throw err
+  }
+  const { command, flags } = parsed
   const debugLog = makeDebugLog(flags.debug === 'true' || process.env.HARPOCRATES_DEBUG === '1')
 
   switch (command) {

@@ -7,13 +7,24 @@
 //! and resolve_* backward-compat defaults.
 
 use super::*;
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, BytesN, Env,
-};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
 
 fn bytes32(env: &Env, value: u8) -> BytesN<32> {
     BytesN::from_array(env, &[value; 32])
+}
+
+#[test]
+fn evidence_metadata_hash_uses_the_fixed_storage_bound() {
+    let (env, client, _) = setup();
+    let (_source, proof_id, _metadata_hash) = register_source_proof(&env, &client);
+
+    let proof = client.get_proof(&proof_id).unwrap();
+    let envelope = client.get_metadata_envelope(&proof_id).unwrap();
+    assert_eq!(proof.metadata_hash.len(), MAX_EVIDENCE_METADATA_HASH_BYTES);
+    assert_eq!(
+        envelope.metadata_hash.len(),
+        MAX_EVIDENCE_METADATA_HASH_BYTES
+    );
 }
 
 fn setup() -> (Env, HarpocratesRegistryClient<'static>, Address) {
